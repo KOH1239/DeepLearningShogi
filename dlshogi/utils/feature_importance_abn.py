@@ -1,24 +1,36 @@
 from cshogi import *
 from cshogi.dlshogi import make_input_features, FEATURES1_NUM, FEATURES2_NUM
+from dlshogi.network.policy_value_network import policy_value_network
+from dlshogi import serializers
 
 import numpy as np
+import torch
 import onnxruntime
 
 import argparse
+import seaborn as sns
+import japanize_matplotlib
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import pandas as pd
 
 parser = argparse.ArgumentParser()
 parser.add_argument('model', type=str, default='model', help='model file name')
+parser.add_argument('model2', type=str, default='model2', help='model file name')
 parser.add_argument('sfen', type=str, help='position')
 parser.add_argument('--svg', type=str)
+parser.add_argument('--network', default='resnet10_swish', help='network type')
+parser.add_argument('--cnt', type=str)
 args = parser.parse_args()
 
-session = onnxruntime.InferenceSession(args.model, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
-FEATURES1_NUM += 2
-board = Board(sfen=args.sfen)
-features1 = np.zeros((41, FEATURES1_NUM, 9, 9), dtype=np.float32)
-features2 = np.zeros((41, FEATURES2_NUM, 9, 9), dtype=np.float32)
-make_input_features(board, features1, features2)
-
+# parent_dir
+parent_dir = "/data/i2lab/ota/progress2024/OtaKosuke/fig_abn/next_problem"
+# abn_csv path
+abn_csv_path = parent_dir + "/abn_csv/"
+# log_abn path
+log_abn_path = parent_dir + "/log_abn/"
+# fig_abn path
+fig_abn_path = parent_dir + "/fig_abn/"
 
 # 移動方向を表す定数
 MOVE_DIRECTION = [
@@ -87,66 +99,6 @@ def make_move_label(move, color):
 
     return move_direction * 81 + to_sq
 
-
-pos = []
-i = 1
-rank = 0
-file = 0
-j = 0
-
-pieces_src = board.pieces
-pieces_in_hand_src = board.pieces_in_hand
-
-for sq in SQUARES:
-	if pieces_src[sq] == NONE:
-		continue
-
-	file, rank = divmod(sq, 9)
-	pieces_dst = pieces_src.copy()
-	# if pieces_dst[sq] < 15:
-	# 	pieces_dst[sq] = NONE
-	# 	pieces_dst[board.king_square(BLACK)] = NONE
-	# else:
-	# 	pieces_dst[sq] = NONE
-	# 	pieces_dst[board.king_square(WHITE)] = NONE
- 
-	pieces_dst[sq] = NONE
-
-	board_dst = board.copy()
-	board_dst.set_pieces(pieces_dst, pieces_in_hand_src)
-	make_input_features(board_dst, features1[i], features2[i])
-	pos.append((file, rank, pieces_src[sq]))
-	i += 1
-
-hand = []
-for c in COLORS:
-	for hp in HAND_PIECES:
-		if pieces_in_hand_src[c][hp] == 0:
-			continue
-
-		pieces_in_hand_dst = (pieces_in_hand_src[0].copy(), pieces_in_hand_src[1].copy())
-		pieces_in_hand_dst[c][hp] = 0
-		
-		# pieces_dst = pieces_src.copy()
-		# pieces_dst[board.king_square(c)] = NONE
-
-		board_dst = board.copy()
-		board_dst.set_pieces(pieces_dst, pieces_in_hand_dst)
-		make_input_features(board_dst, features1[i], features2[i])
-		hand.append((c, hp, pieces_in_hand_src[c][hp]))
-		i += 1
-
-io_binding = session.io_binding()
-io_binding.bind_cpu_input('input1', features1)
-io_binding.bind_cpu_input('input2', features2)
-io_binding.bind_output('output_policy')
-io_binding.bind_output('output_value')
-session.run_with_iobinding(io_binding)
-y1, y2 = io_binding.copy_outputs_to_cpu()
-
-importance = y2 - y2[0]
-
-
 # 温度パラメータを適用した確率分布を取得
 def softmax_temperature_with_normalize(logits, temperature):
     # 温度パラメータを適用
@@ -162,7 +114,83 @@ def softmax_temperature_with_normalize(logits, temperature):
 
     return probabilities
 
+ 
+session = onnxruntime.InferenceSession(args.model, providers=['CUDAExecutionProvider', 'CPUExecutionProvider'])
+model = policy_value_network(args.network)
+device = 0
+model.to(device)
+serializers.load_npz(args.model2, model)
+model.eval()
+
+board = Board(sfen=args.sfen)
+features1 = np.zeros((41, FEATURES1_NUM, 9, 9), dtype=np.float32)
+features2 = np.zeros((41, FEATURES2_NUM, 9, 9), dtype=np.float32)
+make_input_features(board, features1, features2)
+abn_features1 = np.zeros((1, FEATURES1_NUM, 9, 9), dtype=np.float32)
+abn_features2 = np.zeros((1, FEATURES2_NUM, 9, 9), dtype=np.float32)
+make_input_features(board, abn_features1, abn_features2)
+
+pos = []
+i = 1
+rank = 0
+file = 0
+j = 0
 color = board.turn
+
+pieces_src = board.pieces
+pieces_in_hand_src = board.pieces_in_hand
+# 駒を除いた盤面の作成
+for sq in SQUARES:
+    if pieces_src[sq] == NONE:
+        continue
+
+    file, rank = divmod(sq, 9)
+    pieces_dst = pieces_src.copy()
+    pieces_dst[sq] = NONE
+
+    board_dst = board.copy()
+    board_dst.set_pieces(pieces_dst, pieces_in_hand_src)
+    make_input_features(board_dst, features1[i], features2[i])
+    pos.append((file, rank, pieces_src[sq]))
+    i += 1
+
+hand = []
+for c in COLORS:
+    for hp in HAND_PIECES:
+        if pieces_in_hand_src[c][hp] == 0:
+            continue
+
+        pieces_in_hand_dst = (pieces_in_hand_src[0].copy(), pieces_in_hand_src[1].copy())
+        pieces_in_hand_dst[c][hp] = 0
+
+        board_dst = board.copy()
+        board_dst.set_pieces(pieces_src, pieces_in_hand_dst)
+        make_input_features(board_dst, features1[i], features2[i])
+        hand.append((c, hp, pieces_in_hand_src[c][hp]))
+        i += 1
+
+#onnxのモデルに通す
+io_binding = session.io_binding()
+io_binding.bind_cpu_input('input1', features1)
+io_binding.bind_cpu_input('input2', features2)
+io_binding.bind_output('output_policy')
+io_binding.bind_output('output_value')
+io_binding.bind_output('att_policy')
+io_binding.bind_output('att_value')
+session.run_with_iobinding(io_binding)
+y1, y2, a1, a2 = io_binding.copy_outputs_to_cpu()
+
+
+x1 = torch.tensor(abn_features1, device=device)
+x2 = torch.tensor(abn_features2, device=device)
+# x1 = x1.unsqueeze(0)  # x1の次元を(batch_size=1, channels, height, width)に変更
+# x2 = x2.unsqueeze(0)
+policy, value, att_policy, att_value = model(x1, x2)
+
+# valueをもとに各駒の相対的な価値を計算
+importance = y2 - y2[0]
+
+# y1(policy)のデータをsoftmaxに通す
 for policy in y1:
 	# 合法手一覧
 	legal_move_probabilities = np.empty(len(board.legal_moves), dtype=np.float32)
@@ -173,18 +201,61 @@ for policy in y1:
 	
 	# Boltzmann分布
 	probabilities = softmax_temperature_with_normalize(legal_move_probabilities, 1.0)
-	
-with open('importance.txt', 'w') as f:
+
+att_p_map = model.att_p.detach().cpu().numpy()
+att_v_map = model.att_v.detach().cpu().numpy()
+
+np.savetxt(abn_csv_path +"attp_map_"+ args.cnt + ".csv", att_p_map[0][0])
+np.savetxt(abn_csv_path +"attv_map_"+ args.cnt + ".csv", att_v_map[0][0])
+
+# 最小値と最大値を取得 attention policy
+min_att_p = np.min(att_p_map[0][0])
+max_att_p = np.max(att_p_map[0][0])
+
+# 最小値と最大値を取得 attention value
+min_att_v = np.min(att_v_map[0][0])
+max_att_v = np.max(att_v_map[0][0])
+
+# 正規化
+normalized_att_p_map = (att_p_map[0][0] - min_att_p) / (max_att_p - min_att_p)
+normalized_att_v_map = (att_v_map[0][0] - min_att_v) / (max_att_v - min_att_v)
+
+index_list = ["一", "二", "三", "四", "五", "六", "七", "八", "九"]
+columns_list = ["9", "8", "7", "6", "5", "4", "3", "2", "1"]
+
+df_att_p = pd.DataFrame(data=normalized_att_p_map, index=index_list, columns=columns_list)
+df_att_v = pd.DataFrame(data=normalized_att_v_map, index=index_list, columns=columns_list)
+
+# テキストファイルにデータを書きだす
+with open(f'{log_abn_path}/importance_abn_{args.cnt}.txt', 'w') as f:
 	f.write("y2\n")
 	for i in range(len(y2)):
-		f.write(f'{y2[i]}\n')
+		f.write(f'{torch.sigmoid(value[i])}\n')
 	f.write(f"y1 probabilities: {probabilities}\n")
 	f.write(f"probabilities_len: {len(probabilities)}\n")
 	f.write(f"best_move_: {move_to_usi(list(board.legal_moves)[probabilities.argmax()])}\n")
 	f.write("importance\n")
 	for i in range(len(importance)):
 		f.write(f'{importance[i]}\n')
-	f.write(f"importance_sum: {importance.sum()}")
+	f.write(f"importance_sum: {importance.sum()}\n")
+	f.write("att_policy\n")
+	f.write(f"att_policy_len: {len(a1)}\n")
+	f.write(f"att_policy: {a1}\n")
+	f.write("att_value\n")
+	f.write(f"att_value_len: {len(a2)}\n")
+	f.write(f"att_value: {torch.sigmoid(att_value)}\n")
+
+# サブプロットを作成
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+sns.heatmap(df_att_p, annot=True, fmt=".2f", cmap="Reds", square=True, cbar=False, ax=axes[0])
+axes[0].set_title('attention policy')
+
+sns.heatmap(df_att_v, annot=True, fmt=".2f", cmap="Reds", square=True, cbar=False, ax=axes[1])
+axes[1].set_title('attention value')
+
+plt.savefig(fig_abn_path+"att_v_p_map_" + args.cnt+ ".png")
+
 
 output = [['' for _ in range(9)] for _ in range(9)]
 for i in range(len(pos)):
@@ -343,7 +414,6 @@ def to_svg(pos, hand, importance, scale=2.5):
 				e.text = format(abs(value), '.2f')[1:]
 
 	return ET.ElementTree(svg)
-
 
 if args.svg:
 	with open(args.svg, 'wb') as f:

@@ -3,16 +3,29 @@ import torch.nn as nn
 import re
 
 def policy_value_network(network, add_sigmoid=False):
-    m = re.match('^(.*?)(\d+)(x\d+){0,1}(_fcl\d+){0,1}(_reduction\d+){0,1}(_.+){0,1}$', network)
     # wideresnet10 and resnet10_swish are treated specially because there are published models
     if network == 'wideresnet10':
         from dlshogi.network.policy_value_network_wideresnet10 import PolicyValueNetwork
     elif network == 'resnet10_swish':
         from dlshogi.network.policy_value_network_resnet10_swish import PolicyValueNetwork
-    elif m:
-        from importlib import import_module
-        module = import_module(f'dlshogi.network.policy_value_network_{m[1]}')
-        PolicyValueNetwork = getattr(module, 'PolicyValueNetwork')
+    elif network == "ABN":
+        from dlshogi.network.policy_value_network_resnet10_swish_att import PolicyValueNetwork
+    elif network == "ABN_map27":
+        from dlshogi.network.policy_value_network_resnet10_swish_att_27 import PolicyValueNetwork
+    elif network == "ABN_1":
+        from dlshogi.network.policy_value_network_resnet1_swish_att import PolicyValueNetwork
+    elif network == "ABN_Multi":
+        from dlshogi.network.policy_value_network_resnet10_swish_multi_att import PolicyValueNetwork
+    elif network == "ABN_1_value_27":
+        from dlshogi.network.value_network_resnet1_swish_att_27 import PolicyValueNetwork
+        
+    elif "ABN_27map" in network:
+        from dlshogi.network.policy_value_network_resnet_swish_27att import PolicyValueNetwork
+        
+    elif network[:6] == 'resnet':
+        from dlshogi.network.policy_value_network_resnet import PolicyValueNetwork
+    elif network[:5] == 'senet':
+        from dlshogi.network.policy_value_network_senet import PolicyValueNetwork
     else:
         # user defined network
         names = network.split('.')
@@ -28,20 +41,37 @@ def policy_value_network(network, add_sigmoid=False):
                 super(PolicyValueNetworkAddSigmoid, self).__init__(*args, **kwargs)
 
             def forward(self, x1, x2):
-                y1, y2 = super(PolicyValueNetworkAddSigmoid, self).forward(x1, x2)
-                return y1, torch.sigmoid(y2)
+                y1, y2, a1, a2 = super(PolicyValueNetworkAddSigmoid, self).forward(x1, x2) #abn用に追加
+                return y1, torch.sigmoid(y2), a1, a2
+            
+            # def forward(self, x1, x2):
+            #     y1, y2 = super(PolicyValueNetworkAddSigmoid, self).forward(x1, x2) #resnet10_swish
+            #     return y1, torch.sigmoid(y2)
 
         PolicyValueNetwork = PolicyValueNetworkAddSigmoid
 
-    if network in [ 'wideresnet10', 'resnet10_swish' ]:
+    if network in [ 'wideresnet10', 'resnet10_swish']:
         return PolicyValueNetwork()
-    elif m:
+    elif "ABN_27map" in network:
+        # 正規表現パターンに基づいて blocks と k を抽出する
+        pattern = r'_(\d+)_(\d+)'
+        match = re.search(pattern, network)
+        if match:
+            blocks = int(match.group(1))
+            k = int(match.group(2))
+            return PolicyValueNetwork(resnet_blocks=blocks, k=k)
+        else:
+            return PolicyValueNetwork()
+    
+    elif network[:6] == 'resnet' or network[:5] == 'senet':
+        m = re.match('^(resnet|senet)(\d+)(x\d+){0,1}(_fcl\d+){0,1}(_reduction\d+){0,1}(_.+){0,1}$', network)
+
         # blocks
         blocks = int(m[2])
 
         # channels
         if m[3] is None:
-            channels = { 10: 192, 15: 224, 20: 256, 30: 384 }[blocks]
+            channels = { 10: 192, 15: 224, 20: 256 }[blocks]
         else:
             channels = int(m[3][1:])
 
@@ -55,16 +85,16 @@ def policy_value_network(network, add_sigmoid=False):
         if m[6] is None:
             activation = nn.ReLU()
         else:
-            activation = { '_relu': nn.ReLU(), '_swish': nn.SiLU() }[m[6]]
+            activation = { '_relu': nn.ReLU(), '_swish': nn.SiLU(), '_swish_att': nn.SiLU()}[m[6]]
 
-        if m[1] == "senet":
+        if m[1] == 'resnet':
+            return PolicyValueNetwork(blocks=blocks, channels=channels, activation=activation, fcl=fcl)
+        else: # senet
             # reduction
             if m[5] is None:
                 reduction = 8
             else:
                 reduction = int(m[5][10:])
             return PolicyValueNetwork(blocks=blocks, channels=channels, activation=activation, fcl=fcl, reduction=reduction)
-        else:
-            return PolicyValueNetwork(blocks=blocks, channels=channels, activation=activation, fcl=fcl)
     else:
         return PolicyValueNetwork()
