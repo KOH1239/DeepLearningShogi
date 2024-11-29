@@ -20,9 +20,9 @@ class Swish(nn.Module):
 
 k = 192
 fcl = 256 # fully connected layers
-class PolicyValueABNetwork(nn.Module):
+class PolicyValueNetwork(nn.Module):
     def __init__(self):
-        super(PolicyValueABNetwork, self).__init__()
+        super(PolicyValueNetwork, self).__init__()
         self.l1_1_1 = nn.Conv2d(in_channels=FEATURES1_NUM, out_channels=k, kernel_size=3, padding=1, bias=False)
         self.l1_1_2 = nn.Conv2d(in_channels=FEATURES1_NUM, out_channels=k, kernel_size=1, padding=0, bias=False)
         self.l1_2 = nn.Conv2d(in_channels=FEATURES2_NUM, out_channels=k, kernel_size=1, bias=False) # pieces_in_hand
