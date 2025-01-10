@@ -14,10 +14,10 @@ split_punc2 = functools.partial(split_punctuation, punctuations=r"。!?")
 concat_tail_te = functools.partial(concatenate_matching, former_matching_rule=r"^(?P<result>.+)(て)$", remove_former_matched=False)
 segmenter = make_pipeline(normalize, split_newline, concat_tail_te, split_punc2)
 
-path = "/home/koh2357/kif_comment/A_ryuou_kif/ryuou201206290101.kif"
-kif = cshogi.KIF.Parser.parse_file(path)
+# path = "/home/koh2357/kif_comment/A_ryuou_kif/ryuou201206290101.kif"
+# kif = cshogi.KIF.Parser.parse_file(path)
 
-comments ="後手番となった永瀬の作戦は、角道を止めない四間飛車。以前は先手で早石田、後手でゴキゲン中飛車を中心に戦っていた永瀬だが、最近は先後問わず様々な場所に飛車を振る。球種が多ければ多いほど、相手は的を絞りにくくなる。"
+# comments ="後手番となった永瀬の作戦は、角道を止めない四間飛車。以前は先手で早石田、後手でゴキゲン中飛車を中心に戦っていた永瀬だが、最近は先後問わず様々な場所に飛車を振る。球種が多ければ多いほど、相手は的を絞りにくくなる。"
 # 指定されたキーワードのリスト
 keywords = [
     "http", "昼食", "夕食", "回", "名人", "第", "段", "本局", "BS", "自動棋譜更新", 
@@ -26,7 +26,7 @@ keywords = [
     "期", "棋士番号", "分", "時刻", "立会", "永世", "レスポンシブ", "気温", "奨励会", 
     "局後の感想", "スマートフォン", "おやつ", "棋戦", "優勝", "勝", "成績", "入室", 
     "ABEMA", "※", "タブレット", "生まれ", "将棋会館", "腕組み", "対戦", "席", "食事", 
-    "天気", "■"
+    "天気", "■", "AbemaTV", "Twitter", "HP", "菓子", "live_id", "料金", "執筆", "大盤解説"
 ]
 
 def remove_no_need_comment(comments, names):
@@ -49,5 +49,5 @@ def remove_no_need_comment(comments, names):
     
     return "".join(filtered_comments)
 
-if __name__ == "__main__":
-    print(remove_no_need_comment(comments))
+# if __name__ == "__main__":
+#     print(remove_no_need_comment(comments))
