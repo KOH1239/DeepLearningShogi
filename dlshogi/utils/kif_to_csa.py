@@ -6,6 +6,7 @@ from itertools import zip_longest
 from cshogi import *
 from cshogi import KIF
 from cshogi import CSA
+from dlshogi.utils.remove_comment import remove_no_need_comment
 
 parser = argparse.ArgumentParser()
 parser.add_argument("kif_dir")
@@ -29,7 +30,7 @@ for path in glob.glob(os.path.join(args.kif_dir, "**", "*.kif"), recursive=True)
         if len(kif.times) == 0:
             kif.times = [None] * len(kif.moves)
         for move, time, comment in zip(kif.moves, kif.times, kif.comments):
-            csa.move(move, comment=comment, time=time)
+            csa.move(move, comment=str(remove_no_need_comment(comment, kif.names)), time=time)
 
         csa.endgame(kif.endgame, time=kif.times[-1])
     except Exception as e:
