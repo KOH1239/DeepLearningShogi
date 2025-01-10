@@ -256,3 +256,5 @@ ModelManifest.xml
 /dist
 lightning_logs/
 .vscode/
+
+*.so
