@@ -130,7 +130,7 @@ class PolicyValueNetwork(nn.Module):
         # value network
         h22_v = self.swish(self.norm22_v(self.l22_v(u21)))
         h23_v = self.swish(self.l23_v(torch.flatten(h22_v, 1)))
-        return h22_1, self.l24_v(h23_v)
+        return h22_1, self.l24_v(h23_v), h22, h22_v, u21
 
 
     def set_swish(self, memory_efficient=True):
