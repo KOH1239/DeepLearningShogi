@@ -220,7 +220,7 @@ def main(*argv):
         model.eval()
         with torch.no_grad():
             for x1, x2, t1, t2, value in test_dataloader:
-                y1, y2 = model(x1, x2)
+                y1, y2, _, _, _ = model(x1, x2)
 
                 steps += 1
                 loss1 = cross_entropy_loss(y1, t1).mean()
@@ -297,7 +297,7 @@ def main(*argv):
             with torch.cuda.amp.autocast(enabled=args.use_amp, dtype=amp_dtype):
                 model.train()
 
-                y1, y2 = model(x1, x2)
+                y1, y2, _, _, _ = model(x1, x2)
 
                 model.zero_grad()
                 loss1 = cross_entropy_loss_with_soft_target(y1, t1)
@@ -333,7 +333,7 @@ def main(*argv):
 
                 x1, x2, t1, t2, value = test_dataloader.sample()
                 with torch.no_grad():
-                    y1, y2 = model(x1, x2)
+                    y1, y2, _, _ , _ = model(x1, x2)
 
                     loss1 = cross_entropy_loss(y1, t1).mean()
                     loss2 = bce_with_logits_loss(y2, t2)
