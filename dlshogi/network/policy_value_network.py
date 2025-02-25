@@ -9,6 +9,8 @@ def policy_value_network(network, add_sigmoid=False):
         from dlshogi.network.policy_value_network_wideresnet10 import PolicyValueNetwork
     elif network == 'resnet10_swish':
         from dlshogi.network.policy_value_network_resnet10_swish import PolicyValueNetwork
+    elif network == 'kifcaption':
+        from dlshogi.network.policy_value_network_resnet10_swish_caption import PolicyValueNetwork
     elif m:
         from importlib import import_module
         module = import_module(f'dlshogi.network.policy_value_network_{m[1]}')
