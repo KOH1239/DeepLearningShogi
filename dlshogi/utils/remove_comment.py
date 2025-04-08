@@ -47,8 +47,10 @@ def remove_no_need_comment(comments, names):
                     elif name == names[1]:
                         sentence = re.sub(fr"{name[:2]}.*?", "後手", sentence)
             filtered_comments[i] = sentence
-    
-    return "".join(filtered_comments)
+    out = "".join(filtered_comments)
+    if out == "":
+        out = None
+    return out
 
 # if __name__ == "__main__":
 #     print(remove_no_need_comment(comments))
