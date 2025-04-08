@@ -1,4 +1,4 @@
-﻿/*
+﻿﻿/*
   Apery, a USI shogi playing engine derived from Stockfish, a UCI chess playing engine.
   Copyright (C) 2004-2008 Tord Romstad (Glaurung author)
   Copyright (C) 2008-2015 Marco Costalba, Joona Kiiski, Tord Romstad
@@ -75,8 +75,6 @@ namespace {
 void OptionsMap::init(Searcher* s) {
     (*this)["Book_File"]                   = USIOption("book.bin");
     (*this)["Best_Book_Move"]              = USIOption(true);
-    (*this)["Book_Consider_Draw"]          = USIOption(false);
-    (*this)["Book_Consider_Draw_Depth"]    = USIOption(0, 0, 256);
     (*this)["OwnBook"]                     = USIOption(false);
     (*this)["Min_Book_Score"]              = USIOption(-3000, -ScoreInfinite, ScoreInfinite);
     (*this)["USI_Ponder"]                  = USIOption(false);
@@ -110,14 +108,14 @@ void OptionsMap::init(Searcher* s) {
     (*this)["DNN_Batch_Size6"]             = USIOption(0, 0, 256);
     (*this)["DNN_Batch_Size7"]             = USIOption(0, 0, 256);
     (*this)["DNN_Batch_Size8"]             = USIOption(0, 0, 256);
-    (*this)["Softmax_Temperature"]         = USIOption(174, 1, 500);
-    (*this)["Mate_Root_Search"]            = USIOption(33, 0, 37);
+    (*this)["Softmax_Temperature"]         = USIOption(500, 1, 500);
+    (*this)["Mate_Root_Search"]            = USIOption(5, 0, 37);
 #ifdef PV_MATE_SEARCH
     (*this)["PV_Mate_Search_Threads"]      = USIOption(0, 0, 256);
     (*this)["PV_Mate_Search_Depth"]        = USIOption(33, 0, 37);
     (*this)["PV_Mate_Search_Nodes"]        = USIOption(500000, 0, 10000000);
 #endif
-    (*this)["Resign_Threshold"]            = USIOption(10, 0, 1000);
+    (*this)["Resign_Threshold"]            = USIOption(0, 0, 1000);
     (*this)["Draw_Value_Black"]            = USIOption(500, 0, 1000);
     (*this)["Draw_Value_White"]            = USIOption(500, 0, 1000);
     (*this)["C_init"]                      = USIOption(144, 0, 500);
@@ -129,59 +127,17 @@ void OptionsMap::init(Searcher* s) {
     (*this)["UCT_NodeLimit"]               = USIOption(10000000, 100000, 1000000000); // UCTノードの上限
     (*this)["DfPn_Hash"]                   = USIOption(2048, 64, 4096); // DfPnハッシュサイズ
     (*this)["DfPn_Min_Search_Millisecs"]   = USIOption(300, 0, INT_MAX);
+    (*this)["Settai"]                      = USIOption(50, 1, 99);
     (*this)["ReuseSubtree"]                = USIOption(true);
-    (*this)["Eval_Coef"]                   = USIOption(756, 1, 10000);
-    (*this)["Random_Ply"]                  = USIOption(0, 0, 1000);
-    (*this)["Random_Temperature"]          = USIOption(10000, 0, 100000);
-    (*this)["Random_Temperature_Drop"]     = USIOption(1000, 0, 100000);
-    (*this)["Random_Cutoff"]               = USIOption(15, 0, 1000);
-    (*this)["Random_Cutoff_Drop"]          = USIOption(0, 0, 1000);
-    (*this)["Random2_Ply"]                 = USIOption(0, 0, 1000);
-    (*this)["Random2_Probability"]         = USIOption(40, 0, 1000);
-    (*this)["Random2_Temperature"]         = USIOption(10000, 0, 100000);
-    (*this)["Random2_Cutoff"]              = USIOption(30, 0, 1000);
-    (*this)["Random2_Value_Limit"]         = USIOption(750, 0, 1000);
-#if defined(MAKE_BOOK) || defined(BOOK_POLICY)
-    (*this)["Use_Book_Policy"]             = USIOption(false);
-#endif
 #ifdef MAKE_BOOK
     (*this)["PV_Interval"]                 = USIOption(0, 0, INT_MAX);
     (*this)["Save_Book_Interval"]          = USIOption(100, 0, INT_MAX);
-    (*this)["Make_Book_Sleep"]             = USIOption(0, 0, INT_MAX);
-    (*this)["Use_Interruption"]            = USIOption(true);
-    (*this)["Book_Eval_Threshold"]         = USIOption(INT_MAX, 1, INT_MAX);
-    (*this)["Book_Visit_Threshold"]        = USIOption(5, 0, 1000);
-    (*this)["Book_Cutoff"]                 = USIOption(15, 0, 1000);
-    (*this)["Book_Temperature"]            = USIOption(1000, 0, 100000);
-    (*this)["Book_Merge_File"]             = USIOption("");
-    (*this)["Make_Book_Color"]             = USIOption("both");
 #else
     (*this)["PV_Interval"]                 = USIOption(500, 0, INT_MAX);
 #endif // !MAKE_BOOK
-#ifdef MULTI_PONDER
-    (*this)["Multi_Ponder"]                = USIOption(0, 0, 9);
-    (*this)["Multi_Ponder_Engine1"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine2"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine3"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine4"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine5"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine6"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine7"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine8"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine9"]        = USIOption("");
-    (*this)["Multi_Ponder_Engine1_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine2_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine3_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine4_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine5_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine6_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine7_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine8_Options"] = USIOption("");
-    (*this)["Multi_Ponder_Engine9_Options"] = USIOption("");
-#endif
     (*this)["DebugMessage"]                = USIOption(false);
 #ifdef NDEBUG
-    (*this)["Engine_Name"]                 = USIOption("dlshogi");
+    (*this)["Engine_Name"]                 = USIOption("settai_dlshogi");
 #else
     (*this)["Engine_Name"]                 = USIOption("dlshogi Debug Build");
 #endif

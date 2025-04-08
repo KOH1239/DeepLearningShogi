@@ -1,4 +1,4 @@
-﻿#pragma once
+﻿﻿#pragma once
 
 #include <atomic>
 #include <random>
@@ -8,13 +8,6 @@
 #include "generateMoves.hpp"
 #include "search.hpp"
 #include "Node.h"
-
-#ifdef MULTI_PONDER
-void ResetMultiPonder();
-void PrepareMultiPonder();
-void WaitPrepareMultiPonder();
-bool GetMultiPonderMove(std::vector<Move>& moves, int num);
-#endif
 
 // 候補手の最大数(盤上全体)
 // http://www.nara-wu.ac.jp/math/personal/shinoda/bunki.html
@@ -31,6 +24,8 @@ extern float c_init_root;
 extern float c_base_root;
 extern float c_fpu_reduction_root;
 
+extern float settai;
+
 struct po_info_t {
 	int halt;  // 探索を打ち切る回数
 	std::atomic<int> count;       // 現在の探索回数
@@ -39,7 +34,6 @@ struct po_info_t {
 void SetLimits(const LimitsType& limits);
 void SetLimits(const Position* pos, const LimitsType& limits);
 void SetConstPlayout(const int playout);
-void SetPondering(bool value);
 
 // 残り時間
 extern int remaining_time[ColorNum];
@@ -50,12 +44,8 @@ extern unsigned int current_root;
 // ノード数の上限
 extern unsigned int po_max;
 
-// UCT探索の停止フラグ初期化
-void InitUctSearchStop();
-
 // 予測読みを止める
 void StopUctSearch(void);
-bool IsUctSearchStoped();
 
 // 予測読みのモードの設定
 void SetPonderingMode(bool flag);
@@ -84,7 +74,7 @@ void TerminateUctSearch();
 void FinalizeUctSearch(void);
 
 // UCT探索による着手生成
-Move UctSearchGenmove(Position* pos, const Key starting_pos_key, const std::vector<Move>& moves, Move& ponderMove);
+Move UctSearchGenmove(Position* pos, const Key starting_pos_key, const std::vector<Move>& moves, Move& ponderMove, bool ponder = false);
 
 // 探索の再利用の設定
 void SetReuseSubtree(bool flag);
@@ -94,13 +84,6 @@ void SetPvInterval(const int interval);
 
 // MultiPV設定
 void SetMultiPV(const int multipv);
-
-// 勝率から評価値に変換する際の係数設定
-void SetEvalCoef(const int eval_coef);
-
-// ランダムムーブ設定（1000分率）
-void SetRandomMove(const int ply, const int temperature, const int temperature_drop, const int cutoff, const int cutoff_drop);
-void SetRandomMove2(const int ply, const int probability, const int temperature, const int cutoff, const int value_limit);
 
 // モデルパスの設定
 void SetModelPath(const std::string path[max_gpu]);
